@@ -1,0 +1,23 @@
+version: "3.9"
+services:
+  pytorch-jupyter-gpu:
+    image: nvcr.io/nvidia/pytorch:21.12-py3
+    ports:
+      - 8888:8888
+    command: [
+      "jupyter",
+      "notebook"
+    ]
+    ipc: host
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    volumes:
+      - .:/workspace/pytorch-universal-style-transfer
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
