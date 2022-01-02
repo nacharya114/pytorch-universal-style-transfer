@@ -17,6 +17,7 @@ services:
     deploy:
       resources:
         reservations:
+          memory: 2g
           devices:
             - driver: nvidia
               count: 1
