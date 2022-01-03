@@ -114,7 +114,7 @@ def resume_from_checkpoint(chkpoint):
     optimizer = Adam(model.decoder.parameters()) 
     optimizer.load_state_dict(state_dicts["optim"])
     
-    return state_dicts["data_loader"], model, optimizer, state_dict["epoch"], state_dict["global_loss"]
+    return model, optimizer, state_dicts["epoch"], state_dicts["global_loss"]
 
 if __name__=='__main__':
     
