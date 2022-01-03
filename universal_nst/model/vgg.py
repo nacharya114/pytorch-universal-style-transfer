@@ -14,15 +14,18 @@ class Interpolate(nn.Module):
         return x
 
 class VGGAutoEncoder(nn.Module):
-    def __init__(self, rep_layer='relu_5_1', vgg_version='vgg19', vgg_path=None, wct_layer=None):
+    def __init__(self, rep_layer='relu_5_1', vgg_version='vgg19', load_vgg=False, vgg_path=None, wct_layer=None):
         super().__init__()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.rep_layer = rep_layer
         self.encoder = nn.Sequential()
 
-        vgg = torchvision.models.vgg19(pretrained=True if not vgg_path else False)
-        if vgg_path:
-            vgg.load_state_dict(torch.load(vgg_path), strict=False)
+        vgg = torchvision.models.vgg19(pretrained=False)
+        if load_vgg:
+            if vgg_path:
+                vgg.load_state_dict(torch.load(vgg_path), strict=False)
+            else:
+                vgg = torchvision.models.vgg19(pretrained=True)
 
         i = 1
         j = 1

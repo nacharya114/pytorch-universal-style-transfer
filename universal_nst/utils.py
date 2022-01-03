@@ -24,7 +24,7 @@ def image_to_tensor(filename):
     imsize = 512 if torch.cuda.is_available() else 256
     input_tensor = preprocess(imsize)(input_image)
     input_batch = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model
-    return input_batch.to(device)
+    return input_batch.to(get_device())
 
 def imsave(tensor, filename):
     image = tensor.cpu().clone()
