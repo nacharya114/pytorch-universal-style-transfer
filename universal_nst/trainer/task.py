@@ -1,14 +1,22 @@
 import argparse
+import time
+import os
+import torch
+from torch.utils.data import DataLoader
 from torch.nn.functional import mse_loss
 from torch.optim import Adam
 from pathlib import Path
 from ..config import config
+from ..model.dataset import UnsupervisedImageFolder
+from ..model.vgg import VGGAutoEncoder
+from ..utils import get_device, preprocess, imsave
 
 def train(train_loader, model, optim, config):
     
     # Set training mode
     model.train()
     
+    device = get_device()
     
     start_time = time.time()
 
@@ -57,16 +65,19 @@ def train(train_loader, model, optim, config):
                 Path(checkpoint_path).mkdir(parents=True, exist_ok=True) 
                 Path(image_sample_path).mkdir(parents=True, exist_ok=True)
 
-                checkpoint_name = "checkpoint_" + str(step+1) + ".pth"
-                if step==EPOCHS*len(train_loader) - 1:
+                checkpoint_name = "checkpoint_" + str(step+1) + ".pt"
+                if step==config["EPOCHS"]*len(train_loader) - 1:
                     checpoint_name = "final.pth"
                 chkpoint = {
                     "optim" : optim.state_dict(),
                     "model" : model.state_dict(),
-                    "global_step" : step, 
+                    "model_rep" : model.rep_layer,
+                    "data_loader": train_loader,
+                    "epoch" : epoch, 
                     "global_loss" : t_loss
                     }
                 torch.save(model.state_dict(), os.path.join(checkpoint_path, checkpoint_name))
+                torch.save(model.state_dict(), os.path.join(checkpoint_path, "most_recent.pt"))
                 print("Saved VGGAutoEncoder checkpoint file at {}".format(checkpoint_path))
 
                 # Save sample generated image
@@ -79,7 +90,7 @@ def train(train_loader, model, optim, config):
     return t_loss.item()
 
 def init_model(rep_layer):
-    model = VGGAutoEncoder(rep_layer=enc_name).to(device)
+    model = VGGAutoEncoder(rep_layer=rep_layer).to(get_device())
     
     # freeze encoder, update decoder
     for param in model.encoder.parameters():
@@ -90,17 +101,28 @@ def init_model(rep_layer):
 
 def init_dataset(path_to_dataset, batch_size, shuffle):
     dataset = UnsupervisedImageFolder(path_to_dataset, transform=preprocess())
-    loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+    loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
     
     return loader, dataset
+
+def resume_from_checkpoint(chkpoint):
     
-if __name__='__main__':
+    state_dicts = torch.load(chkpoint)
+    model = VGGAutoEncoder(rep_layer=state_dicts["rep_layer"]).to(get_device())
+    model.load_state_dict(state_dicts["model"], strict=False)
+    
+    optimizer = Adam(model.decoder.parameters()) 
+    optimizer.load_state_dict(state_dicts["optim"])
+    
+    return state_dicts["data_loader"], model, optimizer, state_dict["epoch"], state_dict["global_loss"]
+
+if __name__=='__main__':
     
     
     parser = argparse.ArgumentParser(description='Training for vgg autoencoders.')
-    parser.add_argument('rep_layer', type=str, nargs='+',
+    parser.add_argument('rep_layer', type=str,
                     help='Which AE to train')
-    args = parser.parseargs()
+    args = parser.parse_args()
     
     # Get dataset
     train_loader, train_dataset = init_dataset(config["TRAIN_DATASET_PATH"], config["BATCH_SIZE"], shuffle=True)
@@ -109,5 +131,15 @@ if __name__='__main__':
     model = init_model(args.rep_layer)
     
     optimizer = Adam(model.decoder.parameters(), lr=config["LEARNING_RATE"])
+    
+    print("Training job starting. Training VGGAutoEncoder on layer {}.".format(args.rep_layer))
+    print("Configs: ", config)
+    print("\n\n")
+    
+    if os.path.exists(os.path.join(config["SAVE_MODEL_PATH"], args.rep_layer, "checkpoints", "most_recent.pt")):
+        print("Checkpoint found, resuming from that file")
+        chkpoint_path = os.path.join(config["SAVE_MODEL_PATH"], args.rep_layer, "checkpoints", "most_recent.pt")
+        train_loader, model, optimizer, epoch, _ = resume_from_checkpoint(chkpoint_path)
+        config["EPOCHS"] -= epoch
     
     train(train_loader, model, optimizer, config)

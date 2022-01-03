@@ -1,5 +1,5 @@
-import torch
-import torch.transforms as transforms
+import torch.cuda
+from torchvision import transforms
 from torchvision.utils import save_image
 from PIL import Image
 
