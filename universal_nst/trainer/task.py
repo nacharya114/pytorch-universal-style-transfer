@@ -120,10 +120,11 @@ if __name__=='__main__':
     
     
     parser = argparse.ArgumentParser(description='Training for vgg autoencoders.')
-    parser.add_argument('rep_layer', type=str,
+    parser.add_argument('--rep_layer', type=str,
                     help='Which AE to train')
-    parser.add_argument("learning_rate", type=float, default=config["LEARNING_RATE"])
+    parser.add_argument("--lr",  nargs="?", type=float, default=config["LEARNING_RATE"])
     parser.add_argument('--batch', nargs="?", type=int, default=config["BATCH_SIZE"])
+    parser.add_argument("--num_epochs", nargs="?", type=int, default=config["EPOCHS"])
     args = parser.parse_args()
     
     if args.learning_rate:
@@ -131,6 +132,9 @@ if __name__=='__main__':
 
     if args.batch:
         config["BATCH_SIZE"] = args.batch
+    
+    if args.num_epochs:
+        config["EPOCHS"] = args.num_epochs
     # Get dataset
     train_loader, train_dataset = init_dataset(config["TRAIN_DATASET_PATH"], config["BATCH_SIZE"], shuffle=True)
     
